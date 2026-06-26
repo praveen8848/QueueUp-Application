@@ -1,34 +1,36 @@
 # ==========================
 # Build Stage
 # ==========================
-FROM maven:3.9-eclipse-temurin-17-alpine AS build
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
-# Cache dependencies
+# Copy pom.xml first for dependency caching
 COPY pom.xml .
+
+# Download dependencies
 RUN mvn dependency:go-offline
 
-# Copy source
+# Copy source code
 COPY src ./src
 
-# Build application
+# Build the application
 RUN mvn clean package -DskipTests
 
 # ==========================
 # Runtime Stage
 # ==========================
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy generated jar
+# Copy generated JAR
 COPY --from=build /app/target/*.jar app.jar
 
-# Create data directory for H2
+# Create directory for H2 database
 RUN mkdir -p /app/data
 
-# Render will inject PORT
+# Render exposes the PORT environment variable
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-XX:InitialRAMPercentage=25", "-jar", "app.jar"]
+ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-XX:InitialRAMPercentage=25","-jar","app.jar"]
